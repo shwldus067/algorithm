@@ -1,0 +1,97 @@
+#include <stdio.h>
+#include <algorithm>
+#include <vector>
+#define MAXN 1050
+
+using namespace std;
+
+struct edge {
+	int from, to, capacity, flow;
+	edge *reverse_edge;
+
+	edge(int u, int v, int c) : from(u), to(v), capacity(c), flow(0) {}
+
+	int residual() {
+		return capacity - flow;
+	}
+
+	void add_flow(int new_flow) {
+		flow += new_flow;
+		reverse_edge->flow -= new_flow;
+	}
+};
+
+struct flow {
+	int V, E; // # nodes, # edges
+	int source, sink;
+	vector<edge*> adj[MAXN];
+
+	int total_flow = 0;
+
+	void add_edge(int u, int v, int c, bool directed = true) {
+		edge *e1 = new edge(u, v, c);
+		edge *e2 = new edge(v, u, (directed) ? 0 : c);
+		e1->reverse_edge = e2;
+		e2->reverse_edge = e1;
+		adj[u].push_back(e1);
+		adj[v].push_back(e2);
+	}
+
+	bool find_augmenting_path(int *trace, edge **back_edge) {
+		for (int i = 0; i < MAXN; i++) {
+			trace[i] = -1;
+			back_edge[i] = NULL;
+		}
+		int queue[MAXN] = { 0, };
+		int fr = 0, rr = -1;
+		queue[++rr] = source;
+		while (rr >= fr && trace[sink] == -1) {
+			int cur = queue[fr++];
+			for (auto e : adj[cur]) {
+				int nxt = e->to;
+				if (trace[nxt] == -1 && e->residual() > 0) {
+					trace[nxt] = cur;
+					back_edge[nxt] = e;
+					queue[++rr] = nxt;
+				}
+			}
+		}
+		if (trace[sink] == -1) return false;
+		return true;
+	}
+
+	int find_max_flow() {
+		int trace[MAXN];
+		edge* back_edge[MAXN] = { 0, };
+		while (find_augmenting_path(trace, back_edge)) {
+			int new_flow = 1234567890;
+			for (int i = sink; i != source; i = trace[i]) {
+				new_flow = min(new_flow, back_edge[i]->residual());
+			}
+			for (int i = sink; i != source; i = trace[i]) {
+				back_edge[i]->add_flow(new_flow);
+			}
+			total_flow += new_flow;
+		}
+		return total_flow;
+	}
+
+}G;
+
+void input() {
+	scanf("%d", &G.E);
+	for (int i = 0; i < G.E; i++) {
+		char u, v;
+		int c;
+		scanf(" %c %c%d", &u, &v, &c);
+		G.add_edge(u, v, c, false);
+	}
+	G.source = 'A';
+	G.sink = 'Z';
+}
+
+int main() {
+	input();
+	G.find_max_flow();
+	printf("%d\n", G.total_flow);
+}
